@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>天赋发现 · 发现你的超能力</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=Syne:wght@700;800&display=swap');
+
+  :root {
+    --bg: #0a0a14;
+    --surface: #12121f;
+    --card: #1a1a2e;
+    --accent1: #7c3aed;
+    --accent2: #06b6d4;
+    --text: #f0f0ff;
+    --muted: #7878a0;
+    --border: rgba(255,255,255,0.07);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 20%, rgba(124,58,237,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6,182,212,0.1) 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .orb { position:fixed; border-radius:50%; filter:blur(80px); pointer-events:none; z-index:0; animation:drift 12s ease-in-out infinite alternate; }
+  .orb1 { width:300px;height:300px;background:rgba(124,58,237,0.15);top:-100px;left:-100px;animation-delay:0s; }
+  .orb2 { width:250px;height:250px;background:rgba(6,182,212,0.12);bottom:-80px;right:-80px;animation-delay:4s; }
+  .orb3 { width:200px;height:200px;background:rgba(245,158,11,0.1);top:40%;left:60%;animation-delay:8s; }
+  @keyframes drift { from{transform:translate(0,0) scale(1);}to{transform:translate(30px,20px) scale(1.1);} }
+
+  .container {
+    position:relative; z-index:1;
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:20px;
+  }
+
+  .screen { display:none; width:100%; max-width:680px; }
+  .screen.active { display:flex; flex-direction:column; align-items:center; animation:screenIn 0.5s ease; }
+  @keyframes screenIn { from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);} }
+
+  /* ── Welcome ── */
+  .welcome-badge {
+    display:inline-flex; align-items:center; gap:8px;
+    background:rgba(124,58,237,0.15); border:1px solid rgba(124,58,237,0.4);
+    border-radius:100px; padding:6px 18px;
+    font-size:12px; color:#a78bfa; letter-spacing:0.08em; text-transform:uppercase;
+    margin-bottom:28px;
+  }
+  .welcome-badge::before { content:'✦'; font-size:10px; }
+  .hero-title {
+    font-family:'Syne',sans-serif; font-size:clamp(36px,8vw,64px); font-weight:800;
+    text-align:center; line-height:1.1;
+    background:linear-gradient(135deg,#fff 0%,#c4b5fd 40%,#67e8f9 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+    margin-bottom:20px;
+  }
+  .hero-sub { font-size:clamp(15px,3vw,18px); color:var(--muted); text-align:center; line-height:1.7; max-width:480px; margin-bottom:48px; }
+  .hero-sub span { color:#a78bfa; }
+  .talent-chips { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:48px; }
+  .chip { display:flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--border); border-radius:100px; padding:8px 16px; font-size:13px; color:var(--muted); transition:all 0.2s; }
+  .chip:hover { border-color:rgba(124,58,237,0.4); color:var(--text); transform:translateY(-2px); }
+  .chip .emoji { font-size:16px; }
+  .meta-row { display:flex; gap:24px; margin-bottom:40px; flex-wrap:wrap; justify-content:center; }
+  .meta-item { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); }
+  .meta-item .dot { width:6px;height:6px;border-radius:50%;background:var(--accent2);animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(0.8);} }
+
+  .btn-primary {
+    display:inline-flex; align-items:center; justify-content:center; gap:10px;
+    background:linear-gradient(135deg,var(--accent1),#9333ea); color:white;
+    border:none; border-radius:16px; padding:18px 48px;
+    font-size:17px; font-family:'Noto Sans SC',sans-serif; font-weight:700;
+    cursor:pointer; position:relative; overflow:hidden;
+    transition:transform 0.2s,box-shadow 0.2s;
+    box-shadow:0 0 40px rgba(124,58,237,0.4); letter-spacing:0.03em;
+  }
+  .btn-primary::before { content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent,rgba(255,255,255,0.1),transparent);transform:translateX(-100%);transition:transform 0.4s; }
+  .btn-primary:hover { transform:translateY(-3px);box-shadow:0 8px 50px rgba(124,58,237,0.5); }
+  .btn-primary:hover::before { transform:translateX(100%); }
+  .btn-primary:active { transform:translateY(-1px); }
+
+  /* ── Quiz Header ── */
+  .quiz-header { width:100%; margin-bottom:28px; }
+  .quiz-header-top { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+
+  /* ── Back button – bigger & more prominent ── */
+  .btn-back {
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    height:40px; padding:0 16px;
+    border-radius:100px;
+    background:rgba(124,58,237,0.18);
+    border:1.5px solid rgba(124,58,237,0.5);
+    color:#c4b5fd;
+    cursor:pointer; font-size:14px; font-weight:600;
+    font-family:'Noto Sans SC',sans-serif;
+    transition:all 0.2s; flex-shrink:0; white-space:nowrap;
+    letter-spacing:0.02em;
+  }
+  .btn-back .back-arrow { font-size:16px; line-height:1; }
+  .btn-back:hover {
+    background:rgba(124,58,237,0.32);
+    border-color:rgba(124,58,237,0.8);
+    color:#e9d5ff;
+    transform:translateX(-2px);
+    box-shadow:0 0 16px rgba(124,58,237,0.35);
+  }
+  .btn-back:disabled { opacity:0.22; cursor:not-allowed; pointer-events:none; }
+
+  /* Question counter badge */
+  .q-badge {
+    display:flex; align-items:baseline; gap:4px;
+    background:rgba(124,58,237,0.15); border:1px solid rgba(124,58,237,0.35);
+    border-radius:100px; padding:5px 14px; flex-shrink:0;
+  }
+  .q-badge-num { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; color:#c4b5fd; line-height:1; }
+  .q-badge-sep { font-size:13px; color:var(--muted); }
+  .q-badge-total { font-size:13px; color:var(--muted); font-weight:500; }
+
+  /* Step dots */
+  .step-dots { display:flex; align-items:center; gap:4px; flex:1; overflow:hidden; }
+  .step-dot { height:6px; border-radius:100px; background:rgba(255,255,255,0.08); transition:all 0.35s cubic-bezier(0.4,0,0.2,1); flex:1; min-width:4px; max-width:26px; }
+  .step-dot.done { background:linear-gradient(90deg,var(--accent1),#9333ea); box-shadow:0 0 6px rgba(124,58,237,0.5); }
+  .step-dot.current { background:linear-gradient(90deg,var(--accent2),var(--accent1)); box-shadow:0 0 10px rgba(6,182,212,0.6); max-width:36px; animation:dotPulse 1.4s ease-in-out infinite; }
+  @keyframes dotPulse { 0%,100%{box-shadow:0 0 10px rgba(6,182,212,0.6);}50%{box-shadow:0 0 18px rgba(6,182,212,0.9);} }
+
+  .progress-wrap { width:100%; height:3px; background:rgba(255,255,255,0.06); border-radius:100px; overflow:hidden; margin-top:10px; }
+  .progress-bar { height:100%; background:linear-gradient(90deg,var(--accent1),var(--accent2)); border-radius:100px; transition:width 0.5s cubic-bezier(0.4,0,0.2,1); box-shadow:0 0 10px rgba(124,58,237,0.5); }
+
+  /* ── Question ── */
+  .question-card { width:100%; background:var(--card); border:1px solid var(--border); border-radius:24px; padding:clamp(24px,5vw,40px); margin-bottom:20px; position:relative; overflow:hidden; }
+  .question-card::before { content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent1),var(--accent2)); }
+  .q-icon { font-size:36px; margin-bottom:16px; display:block; animation:bounce 2s ease-in-out infinite; }
+  @keyframes bounce { 0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);} }
+  .q-text { font-size:clamp(16px,3.5vw,20px); font-weight:500; line-height:1.6; color:var(--text); }
+
+  .options-grid { width:100%; display:grid; gap:12px; }
+  .option-btn { display:flex; align-items:center; gap:14px; background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:16px 20px; cursor:pointer; text-align:left; transition:all 0.2s; color:var(--text); font-size:clamp(13px,2.5vw,15px); font-family:'Noto Sans SC',sans-serif; line-height:1.5; position:relative; overflow:hidden; }
+  .option-letter { min-width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted);transition:all 0.2s;flex-shrink:0; }
+  .option-btn:hover { border-color:rgba(124,58,237,0.5);background:rgba(124,58,237,0.08);transform:translateX(4px); }
+  .option-btn:hover .option-letter { background:var(--accent1);border-color:var(--accent1);color:white; }
+  .option-btn.selected { border-color:var(--accent1);background:rgba(124,58,237,0.15);box-shadow:0 0 20px rgba(124,58,237,0.2); }
+  .option-btn.selected .option-letter { background:var(--accent1);border-color:var(--accent1);color:white; }
+
+  /* ── Result ── */
+  .result-hero { text-align:center; margin-bottom:32px; width:100%; }
+  .result-crown { font-size:64px; display:block; margin-bottom:16px; animation:crownPop 0.6s cubic-bezier(0.34,1.56,0.64,1) both; }
+  @keyframes crownPop { from{transform:scale(0) rotate(-15deg);opacity:0;}to{transform:scale(1) rotate(0deg);opacity:1;} }
+  .result-label { font-size:12px; text-transform:uppercase; letter-spacing:0.15em; color:var(--muted); margin-bottom:10px; }
+  .result-type { font-family:'Syne',sans-serif; font-size:clamp(28px,6vw,48px); font-weight:800; background:linear-gradient(135deg,#fff,#c4b5fd,#67e8f9); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:12px; }
+  .result-tagline { font-size:15px; color:var(--muted); line-height:1.7; max-width:420px; margin:0 auto; }
+
+  /* ── Top 3 cards – fixed layout, no orphan ── */
+  .top-talents {
+    width:100%;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:14px;
+    margin-bottom:20px;
+  }
+  .talent-card { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:22px 16px; text-align:center; position:relative; overflow:hidden; transition:transform 0.2s,box-shadow 0.2s; animation:cardRise 0.6s ease both; }
+  .talent-card:nth-child(2){animation-delay:0.1s;} .talent-card:nth-child(3){animation-delay:0.2s;}
+  @keyframes cardRise { from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);} }
+  .talent-card:hover { transform:translateY(-4px); box-shadow:0 12px 40px rgba(124,58,237,0.2); }
+  .talent-card.first { border-color:rgba(124,58,237,0.4); background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(6,182,212,0.05)); }
+  .talent-card.first::after { content:'🥇'; position:absolute; top:8px; right:10px; font-size:14px; }
+  .talent-card.second::after { content:'🥈'; position:absolute; top:8px; right:10px; font-size:14px; }
+  .talent-card.third::after { content:'🥉'; position:absolute; top:8px; right:10px; font-size:14px; }
+  .tc-icon { font-size:32px; margin-bottom:8px; display:block; }
+  .tc-name { font-size:14px; font-weight:600; color:var(--text); margin-bottom:5px; }
+  .tc-desc { font-size:11px; color:var(--muted); line-height:1.5; }
+
+  /* ── Score bars ── */
+  .scores-section { width:100%; background:var(--card); border:1px solid var(--border); border-radius:24px; padding:clamp(20px,4vw,32px); margin-bottom:20px; }
+  .scores-title { font-size:13px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:18px; }
+  .score-row { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .score-row:last-child { margin-bottom:0; }
+  .score-label { display:flex; align-items:center; gap:7px; min-width:120px; font-size:13px; color:var(--text); }
+  .score-label .s-icon { font-size:15px; }
+  .score-bar-wrap { flex:1; height:8px; background:rgba(255,255,255,0.06); border-radius:100px; overflow:hidden; }
+  .score-bar-fill { height:100%; border-radius:100px; transition:width 1s cubic-bezier(0.4,0,0.2,1); width:0; }
+  .score-pct { font-size:12px; color:var(--muted); min-width:34px; text-align:right; }
+
+  /* ── Desc cards ── */
+  .desc-section { width:100%; margin-bottom:24px; }
+  .desc-section-title { font-size:13px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:14px; padding-left:4px; }
+  .desc-cards { display:grid; gap:12px; }
+  .desc-card { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:20px 22px; display:flex; gap:16px; align-items:flex-start; transition:transform 0.2s,border-color 0.2s; animation:cardRise 0.5s ease both; }
+  .desc-card:nth-child(2){animation-delay:0.08s;} .desc-card:nth-child(3){animation-delay:0.16s;} .desc-card:nth-child(4){animation-delay:0.24s;}
+  .desc-card:hover { transform:translateY(-2px); border-color:rgba(124,58,237,0.22); }
+  .desc-card-icon { width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+  .desc-card.identity .desc-card-icon { background:rgba(124,58,237,0.15); }
+  .desc-card.strength .desc-card-icon { background:rgba(6,182,212,0.12); }
+  .desc-card.career   .desc-card-icon { background:rgba(245,158,11,0.12); }
+  .desc-card.advice   .desc-card-icon { background:rgba(16,185,129,0.12); }
+  .desc-card-body { flex:1; min-width:0; }
+  .desc-card-label { font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:5px; }
+  .desc-card-content { font-size:14px; color:#d0d0f0; line-height:1.8; }
+  .desc-card-content strong { color:var(--text); font-weight:600; }
+  .career-pills { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+  .career-pill { background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.25); color:#fcd34d; border-radius:100px; padding:4px 12px; font-size:12px; font-weight:500; }
+
+  /* ── Share nudge (not a button) ── */
+  .share-nudge {
+    width:100%;
+    margin-top:4px;
+    margin-bottom:16px;
+    border-radius:20px;
+    background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(6,182,212,0.06));
+    border:1px solid rgba(16,185,129,0.2);
+    padding:20px 24px;
+    display:flex;
+    align-items:flex-start;
+    gap:14px;
+  }
+  .share-nudge-emoji { font-size:28px; flex-shrink:0; margin-top:2px; }
+  .share-nudge-body { flex:1; }
+  .share-nudge-title { font-size:15px; font-weight:600; color:#6ee7b7; margin-bottom:6px; }
+  .share-nudge-text { font-size:13px; color:var(--muted); line-height:1.75; }
+  .share-nudge-text span { color:#a7f3d0; }
+  .share-nudge-link {
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    margin-top:16px; width:100%;
+    background:linear-gradient(135deg,#059669,#10b981);
+    border:none; border-radius:14px; padding:14px 20px;
+    font-size:15px; font-weight:700; color:white;
+    cursor:pointer; transition:all 0.2s;
+    font-family:'Noto Sans SC',sans-serif;
+    box-shadow:0 0 28px rgba(16,185,129,0.35);
+    position:relative; overflow:hidden;
+    letter-spacing:0.02em;
+  }
+  .share-nudge-link::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,transparent,rgba(255,255,255,0.08),transparent); transform:translateX(-100%); transition:transform 0.4s; }
+  .share-nudge-link:hover { transform:translateY(-2px); box-shadow:0 6px 36px rgba(16,185,129,0.5); }
+  .share-nudge-link:hover::before { transform:translateX(100%); }
+  .share-nudge-link:active { transform:translateY(0); }
+
+  /* ── Result bottom actions ── */
+  .result-actions {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    width:100%;
+    margin-top:4px;
+    margin-bottom:24px;
+  }
+  .btn-save {
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--card);
+    border:1.5px solid rgba(124,58,237,0.35);
+    border-radius:14px; padding:14px 16px;
+    font-size:14px; font-weight:600; color:#c4b5fd;
+    font-family:'Noto Sans SC',sans-serif;
+    cursor:pointer; transition:all 0.2s;
+    letter-spacing:0.02em;
+  }
+  .btn-save:hover { background:rgba(124,58,237,0.12); border-color:rgba(124,58,237,0.6); color:#e9d5ff; transform:translateY(-2px); box-shadow:0 4px 20px rgba(124,58,237,0.2); }
+  .btn-save:active { transform:translateY(0); }
+  .btn-retry {
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background:transparent;
+    border:1.5px solid var(--border);
+    border-radius:14px; padding:14px 16px;
+    font-size:14px; font-weight:500; color:var(--muted);
+    font-family:'Noto Sans SC',sans-serif;
+    cursor:pointer; transition:all 0.2s;
+  }
+  .btn-retry:hover { border-color:rgba(255,255,255,0.18); color:var(--text); transform:translateY(-2px); }
+  .btn-retry:active { transform:translateY(0); }
+
+  /* Stars / confetti / toast */
+  .stars { position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+  .star { position:absolute; width:2px; height:2px; background:white; border-radius:50%; opacity:0; animation:twinkle var(--dur) ease-in-out infinite var(--delay); }
+  @keyframes twinkle { 0%,100%{opacity:0;transform:scale(1);}50%{opacity:var(--op);transform:scale(1.5);} }
+  .confetti-piece { position:fixed; width:8px; height:8px; top:-10px; border-radius:2px; animation:confettiFall linear forwards; z-index:100; pointer-events:none; }
+  @keyframes confettiFall { 0%{transform:translateY(0) rotate(0deg);opacity:1;}100%{transform:translateY(110vh) rotate(720deg);opacity:0;} }
+  .toast { position:fixed; bottom:32px; left:50%; transform:translateX(-50%) translateY(100px); background:var(--card); border:1px solid rgba(16,185,129,0.4); color:#10b981; padding:14px 24px; border-radius:100px; font-size:14px; font-weight:500; z-index:9999; transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); white-space:nowrap; }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+
+  .q-out { animation:qOut 0.22s ease forwards; }
+  @keyframes qOut { to{opacity:0;transform:translateX(-28px);} }
+  .q-in { animation:qIn 0.3s ease both; }
+  @keyframes qIn { from{opacity:0;transform:translateX(28px);}to{opacity:1;transform:translateX(0);} }
+  .q-back-out { animation:qBackOut 0.22s ease forwards; }
+  @keyframes qBackOut { to{opacity:0;transform:translateX(28px);} }
+  .q-back-in { animation:qBackIn 0.3s ease both; }
+  @keyframes qBackIn { from{opacity:0;transform:translateX(-28px);}to{opacity:1;transform:translateX(0);} }
+
+  @media(max-width:520px) {
+    .container { padding:14px; }
+    .score-label { min-width:95px; font-size:12px; }
+    .meta-row { gap:12px; }
+    .top-talents { grid-template-columns:repeat(3,1fr); gap:10px; }
+    .talent-card { padding:16px 10px; }
+    .tc-icon { font-size:26px; }
+    .tc-name { font-size:12px; }
+    .tc-desc { display:none; }
+    .desc-card { padding:16px 14px; gap:12px; }
+    .desc-card-icon { width:38px; height:38px; font-size:18px; border-radius:10px; }
+    .btn-back { padding:0 12px; font-size:13px; }
+    .share-nudge { padding:16px 18px; gap:12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+<div class="toast" id="toast"></div>
+
+<div class="container">
+
+  <!-- Welcome -->
+  <div class="screen active" id="screen-welcome">
+    <div class="welcome-badge">免费 · 5分钟 · 科学测评</div>
+    <h1 class="hero-title">发现你的<br>天赋超能力</h1>
+    <p class="hero-sub">基于<span>多元智能理论</span>与<span>优势心理学</span>，<br>15道题揭示你独特的天赋密码</p>
+    <div class="talent-chips">
+      <div class="chip"><span class="emoji">🧠</span>逻辑分析</div>
+      <div class="chip"><span class="emoji">🎨</span>艺术创造</div>
+      <div class="chip"><span class="emoji">🗣️</span>语言表达</div>
+      <div class="chip"><span class="emoji">🤝</span>人际领导</div>
+      <div class="chip"><span class="emoji">🏃</span>运动协调</div>
+      <div class="chip"><span class="emoji">🎵</span>音乐感知</div>
+      <div class="chip"><span class="emoji">📐</span>空间想象</div>
+      <div class="chip"><span class="emoji">🌿</span>自然洞察</div>
+    </div>
+    <div class="meta-row">
+      <div class="meta-item"><div class="dot"></div> 15道题目</div>
+      <div class="meta-item"><div class="dot"></div> 约5分钟完成</div>
+      <div class="meta-item"><div class="dot"></div> 8种天赋维度</div>
+    </div>
+    <button class="btn-primary" onclick="startQuiz()"><span>✦</span> 开始探索天赋</button>
+  </div>
+
+  <!-- Quiz -->
+  <div class="screen" id="screen-quiz">
+    <div class="quiz-header">
+      <div class="quiz-header-top">
+        <button class="btn-back" id="btn-back" onclick="goBack()" disabled>
+          <span class="back-arrow">←</span> 上一题
+        </button>
+        <div class="q-badge">
+          <span class="q-badge-num" id="q-current">1</span>
+          <span class="q-badge-sep">/</span>
+          <span class="q-badge-total" id="q-total">15</span>
+        </div>
+        <div class="step-dots" id="step-dots"></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="question-card" id="question-card">
+      <span class="q-icon" id="q-icon">🤔</span>
+      <p class="q-text" id="q-text">题目内容</p>
+    </div>
+    <div class="options-grid" id="options-grid"></div>
+  </div>
+
+  <!-- Result -->
+  <div class="screen" id="screen-result">
+    <div class="result-hero">
+      <span class="result-crown" id="result-icon">🏆</span>
+      <div class="result-label">你的主导天赋类型</div>
+      <div class="result-type" id="result-type">天赋探索者</div>
+      <p class="result-tagline" id="result-tagline">你的独特天赋正在绽放...</p>
+    </div>
+
+    <div class="top-talents" id="top-talents"></div>
+
+    <div class="scores-section">
+      <div class="scores-title">📊 各维度天赋指数</div>
+      <div id="scores-container"></div>
+    </div>
+
+    <div class="desc-section">
+      <div class="desc-section-title">✦ 你的天赋深度解读</div>
+      <div class="desc-cards" id="desc-cards"></div>
+    </div>
+
+    <div class="share-nudge">
+      <div class="share-nudge-emoji">💌</div>
+      <div class="share-nudge-body">
+        <div class="share-nudge-title">你身边的人知道自己的天赋吗？</div>
+        <div class="share-nudge-text">
+          如果这个测试对你有帮助，<span>不妨把它分享给你在意的人</span>——朋友、家人、或者那个你总觉得"他/她还没发现自己有多厉害"的人 ✨
+        </div>
+        <div class="share-nudge-link" onclick="sfx.share();shareResult()">📤 一键分享给Ta</div>
+      </div>
+    </div>
+
+    <div class="result-actions">
+      <button class="btn-save" onclick="sfx.tap();saveResult()">📥 保存结果</button>
+      <button class="btn-retry" onclick="sfx.back();startQuiz()">↺ 再测一次</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────
+const TALENTS = {
+  logic:         { name:'逻辑分析', icon:'🧠', gradient:'linear-gradient(135deg,#7c3aed,#9333ea)' },
+  language:      { name:'语言表达', icon:'🗣️', gradient:'linear-gradient(135deg,#06b6d4,#0891b2)' },
+  spatial:       { name:'空间想象', icon:'📐', gradient:'linear-gradient(135deg,#f59e0b,#d97706)' },
+  music:         { name:'音乐感知', icon:'🎵', gradient:'linear-gradient(135deg,#f43f5e,#e11d48)' },
+  kinesthetic:   { name:'运动协调', icon:'🏃', gradient:'linear-gradient(135deg,#10b981,#059669)' },
+  interpersonal: { name:'人际领导', icon:'🤝', gradient:'linear-gradient(135deg,#8b5cf6,#7c3aed)' },
+  creative:      { name:'艺术创造', icon:'🎨', gradient:'linear-gradient(135deg,#ec4899,#db2777)' },
+  nature:        { name:'自然洞察', icon:'🌿', gradient:'linear-gradient(135deg,#22c55e,#16a34a)' },
+};
+
+const SHORT_DESC = {
+  logic:'擅长分析，逻辑清晰', language:'表达流畅，文字有力',
+  spatial:'思维立体，空间感强', music:'节奏敏锐，音感天然',
+  kinesthetic:'行动力强，协调自如', interpersonal:'善解人意，凝聚人心',
+  creative:'想象丰富，创意无限', nature:'感知细腻，与自然共鸣',
+};
+
+// 15 questions
+const QUESTIONS = [
+  { icon:'🗺️', text:'当你面对一张复杂的地图或空间布局时，你的感受是？', options:[
+    { text:'很快就能理解方位关系，脑海里自动建模', scores:{spatial:3,logic:1} },
+    { text:'需要一点时间，但能慢慢找到感觉', scores:{spatial:1} },
+    { text:'喜欢用语言描述路线，方向感一般', scores:{language:1} },
+    { text:'比起看图，更喜欢问人或用导航', scores:{interpersonal:1} },
+  ]},
+  { icon:'🎶', text:'你在听音乐时，更容易关注哪个方面？', options:[
+    { text:'旋律和节奏，脑海里会自动跟着哼', scores:{music:3} },
+    { text:'歌词内容，被文字和故事打动', scores:{language:2,music:1} },
+    { text:'音乐带来的画面感或情绪', scores:{creative:2,music:1} },
+    { text:'音乐对我影响不大，我更喜欢安静', scores:{nature:1} },
+  ]},
+  { icon:'💡', text:'当你遇到一个有趣的问题，你的第一反应是？', options:[
+    { text:'立刻开始拆解逻辑，找规律和联系', scores:{logic:3} },
+    { text:'想象各种可能的故事或情景', scores:{creative:2,language:1} },
+    { text:'去问朋友，喜欢集思广益', scores:{interpersonal:2} },
+    { text:'找个安静的地方观察思考', scores:{nature:2,logic:1} },
+  ]},
+  { icon:'👥', text:'在团队合作中，你通常扮演什么角色？', options:[
+    { text:'自然地承担协调和领导的角色', scores:{interpersonal:3} },
+    { text:'提出创意和新鲜想法的那个人', scores:{creative:2,language:1} },
+    { text:'负责分析计划、确保逻辑严密', scores:{logic:2} },
+    { text:'喜欢独立执行，靠行动力贡献', scores:{kinesthetic:2} },
+  ]},
+  { icon:'🏅', text:'以下哪种活动你最享受？', options:[
+    { text:'运动、舞蹈、手工制作', scores:{kinesthetic:3} },
+    { text:'写作、演讲、辩论', scores:{language:3} },
+    { text:'画画、摄影、设计', scores:{creative:3} },
+    { text:'数学谜题、逻辑游戏', scores:{logic:3} },
+  ]},
+  { icon:'🌳', text:'你在大自然中的感受是？', options:[
+    { text:'特别放松，会仔细观察动植物', scores:{nature:3} },
+    { text:'灵感会突然涌现，想创作', scores:{creative:2,nature:1} },
+    { text:'喜欢用身体去感受，爬山远足', scores:{kinesthetic:2,nature:1} },
+    { text:'还好，更喜欢室内环境', scores:{logic:1} },
+  ]},
+  { icon:'📖', text:'读完一本精彩的书，你最想做什么？', options:[
+    { text:'迫不及待地和别人分享感受', scores:{language:3,interpersonal:1} },
+    { text:'写书评或读后感记录想法', scores:{language:2,creative:1} },
+    { text:'深入思考书中的逻辑和结构', scores:{logic:2} },
+    { text:'脑海里浮现画面，想画出来', scores:{creative:2,spatial:1} },
+  ]},
+  { icon:'🎯', text:'你学习新技能时，哪种方式最有效？', options:[
+    { text:'直接上手操作，边做边学', scores:{kinesthetic:3} },
+    { text:'先理解背后的原理和逻辑', scores:{logic:3} },
+    { text:'看图解、视频，喜欢可视化', scores:{spatial:2,creative:1} },
+    { text:'听老师讲解或找人交流', scores:{interpersonal:2,language:1} },
+  ]},
+  { icon:'🌙', text:'在空闲时间，你最可能在做什么？', options:[
+    { text:'刷算法题、看科普、做推理游戏', scores:{logic:3} },
+    { text:'写日记、看小说、学新语言', scores:{language:3} },
+    { text:'跳舞、健身、打球、做手工', scores:{kinesthetic:3} },
+    { text:'画画、修图、听音乐、玩乐器', scores:{creative:2,music:2} },
+  ]},
+  { icon:'🔍', text:'当有人表达情绪时，你通常会？', options:[
+    { text:'立刻感受到，本能地想帮助', scores:{interpersonal:3} },
+    { text:'用准确的语言表达理解和安慰', scores:{language:2,interpersonal:1} },
+    { text:'帮他们分析问题，找解决方案', scores:{logic:2} },
+    { text:'用行动来表达关心，比如陪伴', scores:{kinesthetic:1,interpersonal:2} },
+  ]},
+  { icon:'🎪', text:'关于节奏和韵律，你的感受是？', options:[
+    { text:'天生对节奏敏感，听到音乐就想动', scores:{music:3,kinesthetic:1} },
+    { text:'喜欢语言和文字的韵律美', scores:{language:2,music:1} },
+    { text:'感兴趣但不算特别敏锐', scores:{music:1} },
+    { text:'更关注内容，对节奏不太在意', scores:{logic:1} },
+  ]},
+  { icon:'🌈', text:'当你看到一幅艺术作品，你的第一反应是？', options:[
+    { text:'立刻被色彩和构图吸引，陷入欣赏', scores:{creative:3,spatial:1} },
+    { text:'想了解创作背后的故事和意义', scores:{language:2,interpersonal:1} },
+    { text:'分析作品的结构和技法', scores:{logic:2,spatial:1} },
+    { text:'身体会不自觉地做出反应，比如模仿姿势', scores:{kinesthetic:2,creative:1} },
+  ]},
+  { icon:'🧩', text:'面对一个复杂的项目，你最先会做什么？', options:[
+    { text:'画出结构图或思维导图，理清框架', scores:{logic:3,spatial:1} },
+    { text:'先和相关的人聊聊，收集各方意见', scores:{interpersonal:3} },
+    { text:'直接动手做一个原型，边做边想', scores:{kinesthetic:2,creative:1} },
+    { text:'查阅资料、写下自己的思路和计划', scores:{language:2,logic:1} },
+  ]},
+  { icon:'🌟', text:'在你的朋友眼中，你最常被称赞的是什么？', options:[
+    { text:'分析能力强，能把复杂事情讲得很清楚', scores:{logic:3,language:1} },
+    { text:'很有创意，总是有新奇的想法', scores:{creative:3} },
+    { text:'很有感染力，和你在一起很舒服', scores:{interpersonal:3} },
+    { text:'行动力强，说到做到', scores:{kinesthetic:2,logic:1} },
+  ]},
+  { icon:'🎭', text:'如果可以选择一种表达自己的方式，你会选？', options:[
+    { text:'写一篇文章或演讲，用文字打动人', scores:{language:3} },
+    { text:'用音乐或舞蹈表达内心感受', scores:{music:2,kinesthetic:2} },
+    { text:'设计一件视觉作品，让人一眼就懂', scores:{creative:3,spatial:1} },
+    { text:'用逻辑推理说服对方，以理服人', scores:{logic:3} },
+  ]},
+];
+
+const PROFILES = {
+  logic: {
+    title:'逻辑思维大师', icon:'🧠',
+    tagline:'你的大脑就是一台精密的分析机器，善于找规律、解难题',
+    identity:'你拥有<strong>卓越的逻辑分析能力</strong>，善于将复杂问题拆解为清晰的模块，享受推理和发现规律的过程。',
+    strength:'你的核心优势是<strong>系统性思维</strong>——能快速识别规律、排除干扰项、建立因果链条，在混乱中找到秩序。',
+    careers:['软件工程','数据分析','金融投资','科学研究','战略咨询','法律推理'],
+    advice:'将逻辑天赋与表达能力结合，你不仅能想清楚，更能让别人理解你的思路——这是顶尖人才的关键差异。',
+  },
+  language: {
+    title:'语言表达天才', icon:'🗣️',
+    tagline:'文字在你手中如魔法般流动，你能用语言触碰人心',
+    identity:'你拥有<strong>天赋的语言智慧</strong>，能精准、优美地表达思想与情感，对词语的力量有天然的直觉感知。',
+    strength:'你的核心优势是<strong>沟通与叙事能力</strong>——无论书面还是口头，你都能让复杂的想法变得清晰动人，引发共鸣。',
+    careers:['内容创作','教育培训','法律辩护','公关传播','编剧写作','外交谈判'],
+    advice:'你的语言天赋是稀缺资产。持续积累词汇和跨领域知识，你的表达将越来越有深度和感染力。',
+  },
+  spatial: {
+    title:'空间想象达人', icon:'📐',
+    tagline:'你的脑海是一个3D工作室，能构建他人看不见的世界',
+    identity:'你拥有<strong>出色的空间智能</strong>，能在脑海中轻松构建和操纵三维图像，对形状、方向和比例有天然的直觉。',
+    strength:'你的核心优势是<strong>视觉化思维</strong>——别人看到平面，你看到立体；别人看到现状，你看到可能的结构。',
+    careers:['建筑设计','产品设计','游戏开发','工程制造','外科手术','城市规划'],
+    advice:'尝试学习3D建模或设计工具，将脑海中的图像变成现实作品，你的空间天赋在可视化创作中大放异彩。',
+  },
+  music: {
+    title:'音乐感知精灵', icon:'🎵',
+    tagline:'你的耳朵是最灵敏的乐器，能听见他人错过的旋律',
+    identity:'你拥有<strong>敏锐的音乐智能</strong>，对节奏、音调、旋律有天生的感知力，音乐对你是一种深层次的语言。',
+    strength:'你的核心优势是<strong>感知细腻与节奏感</strong>——这不仅体现在音乐，也让你在团队协作中能敏锐感受"节奏"与"和谐"。',
+    careers:['音乐创作','音效设计','声学研究','音乐治疗','艺术表演','品牌音频'],
+    advice:'系统学习一种乐器或音乐制作软件，你天生的音感在训练加持下将爆发出惊人的艺术力量。',
+  },
+  kinesthetic: {
+    title:'运动天赋体验家', icon:'🏃',
+    tagline:'你的身体是你最聪明的工具，能感受常人体验不到的世界',
+    identity:'你拥有<strong>卓越的身体运动智能</strong>，对协调、力量控制和精细动作有天生掌控力，是通过"做"来学习的行动者。',
+    strength:'你的核心优势是<strong>执行力与身体感知</strong>——在需要动手、动身、快速反应的场景中，你比任何人都更自如。',
+    careers:['竞技运动','舞蹈表演','外科手术','工艺制作','体能训练','户外探险'],
+    advice:'探索不同类型的运动或手工艺，身体的记忆会成为你最持久的竞争力。找到你最享受的领域，然后精进它。',
+  },
+  interpersonal: {
+    title:'人际领导魅力星', icon:'🤝',
+    tagline:'人心是你的地图，你天生懂得如何连接与影响他人',
+    identity:'你拥有<strong>出众的人际交往智能</strong>，能快速感知他人情绪和需求，天生具有感召力和信任建立的能力。',
+    strength:'你的核心优势是<strong>共情与影响力</strong>——你让别人感到被理解、被重视，这是所有领导力和合作成功的基础。',
+    careers:['领导管理','心理咨询','销售谈判','教育培训','公益倡导','团队教练'],
+    advice:'主动争取带领团队或协调项目的机会。你的人际天赋在实战中成长最快，每一次真实的连接都是你的修炼场。',
+  },
+  creative: {
+    title:'艺术创造奇才', icon:'🎨',
+    tagline:'你的想象力是无边的画布，能将世界转化为独特的艺术',
+    identity:'你拥有<strong>天才般的创造与艺术智能</strong>，能以独特视角感知和表达世界，总在寻找新的可能性和美的形式。',
+    strength:'你的核心优势是<strong>原创性思维</strong>——你不满足于已有答案，这种"为什么不能不同？"的本能，是创新的最原始驱动力。',
+    careers:['视觉设计','广告创意','游戏开发','影视导演','时尚品牌','艺术策展'],
+    advice:'给自己定期的"无目的创作时间"，允许自己探索不设限。你的创造力需要自由的土壤，才能长出最惊艳的作品。',
+  },
+  nature: {
+    title:'自然洞察智者', icon:'🌿',
+    tagline:'你与自然有着神秘的连接，能读懂万物的语言',
+    identity:'你拥有<strong>深厚的自然智能</strong>，对自然界的规律和生命系统有着直觉般的感知，善于观察细节、识别模式。',
+    strength:'你的核心优势是<strong>系统观察力与耐心</strong>——你能在细微变化中发现规律，在复杂系统中理解整体，这是科学与自然领域的核心能力。',
+    careers:['生态研究','环境科学','农业创新','自然医学','户外教育','可持续设计'],
+    advice:'将你的自然感知力与系统性思维结合，你对"整体生态"的直觉理解，将成为这个时代最需要的智慧。',
+  },
+};
+
+// ── STATE ────────────────────────────────────────────────────
+let currentQ = 0;
+let answers = [];
+let scores = {};
+
+function initScores() {
+  scores = {};
+  Object.keys(TALENTS).forEach(k => scores[k] = 0);
+}
+
+// ── STARS ────────────────────────────────────────────────────
+(function() {
+  const c = document.getElementById('stars');
+  for (let i=0;i<60;i++) {
+    const s=document.createElement('div'); s.className='star';
+    s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;--dur:${2+Math.random()*4}s;--delay:${Math.random()*6}s;--op:${0.2+Math.random()*0.6};width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;`;
+    c.appendChild(s);
+  }
+})();
+
+// ── SFX ──────────────────────────────────────────────────────
+const sfx = (() => {
+  let ctx = null;
+  const init = () => { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); return ctx; };
+
+  function play(freq, vol, atk, dec, type, freqEnd) {
+    try {
+      const c = init();
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      const now = c.currentTime;
+      osc.connect(g); g.connect(c.destination);
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+      if (freqEnd) osc.frequency.linearRampToValueAtTime(freqEnd, now + atk + dec);
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(vol, now + atk);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + atk + dec);
+      osc.start(now); osc.stop(now + atk + dec + 0.05);
+    } catch(e) {}
+  }
+
+  return {
+    // Soft tick when selecting an option
+    tap()     { play(480, 0.15, 0.007, 0.10); play(720, 0.06, 0.007, 0.07); },
+    // Gentle forward whoosh when advancing
+    next()    { play(300, 0.10, 0.01, 0.18, 'sine', 580); },
+    // Downward swoop when going back
+    back()    { play(520, 0.09, 0.01, 0.18, 'sine', 260); },
+    // Warm celebration chord on result
+    celebrate() {
+      [[523,0],[659,60],[784,120],[1047,180]].forEach(([f,d]) => {
+        setTimeout(() => play(f, 0.11, 0.01, 0.85), d);
+        setTimeout(() => play(f*1.005, 0.04, 0.01, 0.60), d + 15);
+      });
+    },
+    // Copy/share click
+    share()   { play(600, 0.10, 0.007, 0.12); play(900, 0.05, 0.012, 0.10); },
+    // Save click – slightly lower, "done" feel
+    save()    { play(420, 0.10, 0.007, 0.10); play(630, 0.05, 0.010, 0.09); },
+    // Start button
+    start()   { [330,415,523].forEach((f,i)=>setTimeout(()=>play(f,0.10,0.01,0.18),i*55)); },
+  };
+})();
+
+// ── DOTS ─────────────────────────────────────────────────────
+function renderDots() {
+  const c = document.getElementById('step-dots');
+  c.innerHTML = '';
+  QUESTIONS.forEach((_,i) => {
+    const d = document.createElement('div');
+    d.className = 'step-dot' + (i<currentQ?' done':i===currentQ?' current':'');
+    c.appendChild(d);
+  });
+}
+
+// ── QUIZ ─────────────────────────────────────────────────────
+function startQuiz() {
+  sfx.start();
+  initScores(); currentQ=0; answers=[];
+  showScreen('quiz'); renderQuestion('in');
+}
+
+function renderQuestion(dir) {
+  const q = QUESTIONS[currentQ];
+  document.getElementById('q-current').textContent = currentQ+1;
+  document.getElementById('q-total').textContent = QUESTIONS.length;
+  document.getElementById('progress-bar').style.width = (currentQ/QUESTIONS.length*100)+'%';
+  document.getElementById('btn-back').disabled = currentQ===0;
+  renderDots();
+
+  const anim = dir==='back'?'q-back-in':'q-in';
+  document.getElementById('question-card').className = 'question-card '+anim;
+  document.getElementById('options-grid').className = 'options-grid '+anim;
+  document.getElementById('q-icon').textContent = q.icon;
+  document.getElementById('q-text').textContent = q.text;
+
+  const grid = document.getElementById('options-grid');
+  grid.innerHTML='';
+  ['A','B','C','D'].forEach((letter,i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn'+(answers[currentQ]===i?' selected':'');
+    btn.innerHTML = `<span class="option-letter">${letter}</span><span>${q.options[i].text}</span>`;
+    btn.onclick = () => selectOption(btn, q.options[i], i);
+    grid.appendChild(btn);
+  });
+}
+
+function selectOption(btn, opt, idx) {
+  document.querySelectorAll('.option-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  answers[currentQ] = idx;
+  sfx.tap();
+
+  setTimeout(() => {
+    sfx.next();
+    if (opt.scores) Object.entries(opt.scores).forEach(([k,v])=>scores[k]=(scores[k]||0)+v);
+
+    const card=document.getElementById('question-card');
+    const grid=document.getElementById('options-grid');
+    card.className='question-card q-out'; grid.className='options-grid q-out';
+
+    setTimeout(()=>{
+      currentQ++;
+      if (currentQ>=QUESTIONS.length) showResults();
+      else renderQuestion('in');
+    },230);
+  },450);
+}
+
+function goBack() {
+  if (currentQ===0) return;
+  sfx.back();
+  const prev = currentQ-1;
+  const prevChoice = answers[prev];
+  if (prevChoice!==undefined) {
+    const prevOpt = QUESTIONS[prev].options[prevChoice];
+    if (prevOpt.scores) Object.entries(prevOpt.scores).forEach(([k,v])=>scores[k]=Math.max(0,(scores[k]||0)-v));
+    answers[prev]=undefined;
+  }
+
+  const card=document.getElementById('question-card');
+  const grid=document.getElementById('options-grid');
+  card.className='question-card q-back-out'; grid.className='options-grid q-back-out';
+
+  setTimeout(()=>{ currentQ--; renderQuestion('back'); },220);
+}
+
+// ── RESULTS ──────────────────────────────────────────────────
+function showResults() {
+  document.getElementById('progress-bar').style.width='100%';
+
+  const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const topKey = sorted[0][0];
+  const profile = PROFILES[topKey];
+
+  document.getElementById('result-icon').textContent = profile.icon;
+  document.getElementById('result-type').textContent = profile.title;
+  document.getElementById('result-tagline').textContent = profile.tagline;
+
+  // Top 3 – always 3 columns, no orphan
+  const medals = ['first','second','third'];
+  const topDiv = document.getElementById('top-talents');
+  topDiv.innerHTML='';
+  sorted.slice(0,3).forEach(([key],i)=>{
+    const t=TALENTS[key];
+    const el=document.createElement('div');
+    el.className='talent-card '+medals[i];
+    el.innerHTML=`<span class="tc-icon">${t.icon}</span><div class="tc-name">${t.name}</div><div class="tc-desc">${SHORT_DESC[key]}</div>`;
+    topDiv.appendChild(el);
+  });
+
+  // Score bars
+  const maxScore=sorted[0][1]||1;
+  const scEl=document.getElementById('scores-container');
+  scEl.innerHTML='';
+  sorted.forEach(([key,score])=>{
+    const t=TALENTS[key];
+    const pct=Math.max(Math.round((score/(maxScore+2))*100),5);
+    const row=document.createElement('div'); row.className='score-row';
+    row.innerHTML=`<div class="score-label"><span class="s-icon">${t.icon}</span>${t.name}</div><div class="score-bar-wrap"><div class="score-bar-fill" data-pct="${pct}" style="background:${t.gradient}"></div></div><div class="score-pct">${pct}%</div>`;
+    scEl.appendChild(row);
+  });
+
+  // Desc cards
+  const dc=document.getElementById('desc-cards');
+  dc.innerHTML='';
+  [
+    {type:'identity',icon:profile.icon,label:'你是谁',content:profile.identity},
+    {type:'strength',icon:'⚡',label:'核心优势',content:profile.strength},
+    {type:'career',icon:'🚀',label:'适合方向',content:'你的天赋在这些领域能产生最大价值：',pills:profile.careers},
+    {type:'advice',icon:'✨',label:'成长建议',content:profile.advice},
+  ].forEach((c,i)=>{
+    const el=document.createElement('div');
+    el.className=`desc-card ${c.type}`;
+    el.style.animationDelay=(i*0.08)+'s';
+    const pillsHTML=c.pills?`<div class="career-pills">${c.pills.map(p=>`<span class="career-pill">${p}</span>`).join('')}</div>`:'';
+    el.innerHTML=`<div class="desc-card-icon">${c.icon}</div><div class="desc-card-body"><div class="desc-card-label">${c.label}</div><div class="desc-card-content">${c.content}${pillsHTML}</div></div>`;
+    dc.appendChild(el);
+  });
+
+  showScreen('result');
+  launchConfetti();
+  sfx.celebrate();
+  setTimeout(()=>document.querySelectorAll('.score-bar-fill').forEach(b=>b.style.width=b.dataset.pct+'%'),150);
+}
+
+// ── CONFETTI ─────────────────────────────────────────────────
+function launchConfetti() {
+  const colors=['#7c3aed','#06b6d4','#f59e0b','#10b981','#f43f5e','#8b5cf6','#ec4899'];
+  for(let i=0;i<60;i++) setTimeout(()=>{
+    const p=document.createElement('div'); p.className='confetti-piece';
+    p.style.cssText=`left:${Math.random()*100}%;background:${colors[~~(Math.random()*colors.length)]};width:${4+Math.random()*8}px;height:${4+Math.random()*8}px;border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${2+Math.random()*3}s;animation-delay:${Math.random()*.5}s;`;
+    document.body.appendChild(p); setTimeout(()=>p.remove(),5500);
+  },i*30);
+}
+
+// ── SHARE ────────────────────────────────────────────────────
+function shareResult() {
+  const type=document.getElementById('result-type').textContent;
+  const tagline=document.getElementById('result-tagline').textContent;
+  const text=`🌟 我在"天赋发现"测试中的结果是：${type}！\n"${tagline}"\n\n快来发现你的天赋超能力吧～`;
+  if (navigator.share) { navigator.share({title:'我的天赋类型',text}).catch(()=>{}); }
+  else if (navigator.clipboard) { navigator.clipboard.writeText(text).then(()=>showToast('✓ 已复制，快去分享给朋友！')); }
+  else { showToast('✓ 快截图分享给好友吧！'); }
+}
+
+function saveResult() {
+  sfx.save();
+  const type = document.getElementById('result-type').textContent;
+  const tagline = document.getElementById('result-tagline').textContent;
+
+  // Build a clean text card
+  const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const top3 = sorted.slice(0,3).map(([k])=>TALENTS[k].name).join(' · ');
+  const lines = [
+    '═══════════════════════════',
+    '  🌟 我的天赋发现报告',
+    '═══════════════════════════',
+    '',
+    `主导天赋：${type}`,
+    `"${tagline}"`,
+    '',
+    `天赋TOP 3：${top3}`,
+    '',
+    '── 各维度天赋指数 ──',
+    ...sorted.map(([k,v])=>{
+      const pct = Math.max(Math.round((v/(sorted[0][1]+2))*100),5);
+      const bar = '█'.repeat(Math.round(pct/10))+'░'.repeat(10-Math.round(pct/10));
+      return `${TALENTS[k].icon} ${TALENTS[k].name.padEnd(5,'　')} ${bar} ${pct}%`;
+    }),
+    '',
+    '═══════════════════════════',
+    `保存于 ${new Date().toLocaleDateString('zh-CN')}`,
+  ];
+  const content = lines.join('\n');
+
+  // Try to download as .txt file
+  try {
+    const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `天赋报告_${type}.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('✓ 结果已保存到本地！');
+  } catch(e) {
+    // Fallback: copy to clipboard
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(content).then(()=>showToast('✓ 已复制，可粘贴保存！'));
+    } else {
+      showToast('✓ 快截图保存吧！');
+    }
+  }
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>
